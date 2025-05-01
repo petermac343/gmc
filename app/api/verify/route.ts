@@ -1,7 +1,6 @@
+// app/api/verify/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { chromium } from 'playwright';
-
-const cache: { [key: string]: any } = {}; // In-memory cache
+import puppeteer from 'puppeteer';
 
 export async function POST(req: NextRequest) {
   const { gmcNumber } = await req.json();
@@ -11,17 +10,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Check if the data is already cached
-    if (cache[gmcNumber]) {
-      console.log('Cache hit for GMC number:', gmcNumber);
-      return NextResponse.json(cache[gmcNumber]);
-    }
-
     const data = await verifyGMC(gmcNumber);
-    
-    // Cache the result
-    cache[gmcNumber] = data;
-
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('API ERROR:', error);
@@ -30,24 +19,21 @@ export async function POST(req: NextRequest) {
 }
 
 async function verifyGMC(gmcNumber: string) {
-  const browser = await chromium.launch({
-    headless: true, // Launch in headless mode
+  const browser = await puppeteer.launch({
+    headless: 'new',
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
   try {
-    // Create a browser context with the user agent set
-    const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
-    });
-    
-    const page = await context.newPage(); // Open a new page in the context
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36'
+    );
     await page.setDefaultNavigationTimeout(60000);
     await page.setDefaultTimeout(30000);
 
-    // Use 'networkidle' instead of 'networkidle2'
-    await page.goto(`https://www.gmc-uk.org/registrants/${gmcNumber}`, {
-      waitUntil: 'networkidle', // Changed from 'networkidle2' to 'networkidle'
+    await page.goto(https://www.gmc-uk.org/registrants/${gmcNumber}, {
+      waitUntil: 'networkidle2',
     });
 
     await page.waitForSelector('#registrantNameId', { timeout: 15000 });
